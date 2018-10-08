@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<!--http://www.steves-internet-guide.com/using-javascript-mqtt-client-websockets/-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.1/css/bulma.css" />
+    <style>
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity .5s;
+        }
+        .fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
+            opacity: 0;
+        }
+    </style>
+    <title>PAHO MQTT TEST - websocket</title>
+</head>
+<body>
+    <div id="app">
+        <nav class="navbar" :class="{'is-primary': connected, 'is-warning': !connected}">
+            <div class="navbar-brand">
+                <a class="navbar-item title is-4 is-marginless" href="https://emoncms.org">Clientside webSocket MQTT client</a>
+                <div class="navbar-burger burger" data-target="navbarExampleTransparentExample">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+            <div class="navbar-end">
+                <div class="navbar-item">
+                    <div class="field is-grouped">
+                        <p class="control">
+                            <button class="button" @click="disconnect">
+                                <span>{{ _('Disconnect') }}</span>
+                            </button>
+                        </p>
+                    </div>
+                </div>
+                <div class="navbar-item">
+                    <div class="field is-grouped">
+                        <p class="control">
+                            <button class="button" @click="connect">
+                                <span>{{ _('Connect') }}</span>
+                            </button>
+                        </p>
+                    </div>
+                </div>
+                <div class="navbar-item">
+                    <div class="field is-grouped">
+                        <p class="control">
+                            <a class="button" href="https://github.com/emoncms">
+                                <span class="icon">
+                                    <i class="fab fa-github"></i>
+                                </span>
+                                <span>GitHub</span>
+                            </a>
+                        </p>
+                    </div>
+                </div>
+                <div class="navbar-item">
+                    <div class="field is-grouped">
+                        <p class="control">
+                            <button class="button" @click="nextLanguage">
+                                <span class="icon"><i class="fas fa-language"></i></span>
+                                <span>{{ currentLanguage }}</span>
+                            </button>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </nav>
+        
+        <section class="section">
+            <div class="container">
+                <div class="columns">
+                    <div class="column is-one-quarter">
+                        <nav class="panel">
+                            <div class="panel-heading">
+                                <a class="button is-fullwidth is-primary" :disabled="connected" @click="connect" :class="{'is-outlined':connected}">
+                                    <span v-if="connected">
+                                        <span> {{ _('Connected') }}</span>
+                                    </span>
+                                    <span v-else>
+                                        <span>{{ _('Connect') }}</span>
+                                    </span>
+                                </a>
+                            </div>
+                            <div class="panel-block">
+                                <p class="control has-icons-left">
+                                    <input class="input is-small" type="text" :placeholder="_('Search')" v-model="q">
+                                    <span class="icon is-small is-left">
+                                        <i class="fas fa-search" aria-hidden="true"></i>
+                                    </span>
+                                </p>
+                            </div>
+                            <p class="panel-tabs">
+                                <a :class="{'is-active': !inPublishMode}" @click="inPublishMode=false">{{ _('Subscribe') }}</a>
+                                <a :class="{'is-active': inPublishMode}" @click="inPublishMode=true">{{ _('Publish') }}</a>
+                            </p>
+                            
+                            <a class="panel-block" :class="{'is-active':currentTopic==key}" v-for="(topic, key) in results" @click="changeTopic(key)">
+                                <span class="panel-icon">
+                                    <i class="fas fa-book"></i>
+                                </span>
+                                {{key}}
+                            </a>
+                            
+                            <div class="panel-block">
+                                <button class="button is-warning is-outlined is-fullwidth" @click="disconnect" :disabled="!connected">
+                                    {{ _('Disconnect') }}
+                                </button>
+                            </div>
+                        </nav>
+                    </div>
+                    <div class="column">
+                        <details class="box" :class="{'has-background-primary': connected, 'has-background-warning': !connected}">
+                            <transition name="fade">
+                                <summary>
+                                    <span v-if="message!=''">
+                                        <span>{{status}}:</span> 
+                                        <small>{{message}}</small>
+                                    </span>
+                                </summary>
+                            </transition>
+                            <div class="columns">
+                                <div class="column">
+                                    <div class="field">
+                                        <label class="label">{{ _('Host') }}</label>
+                                        <div class="control">
+                                            <input class="input" type="text" placeholder="Hostname or IP" v-model="host">
+                                        </div>
+                                        <p class="help">{{ _('The host must accept websocket connections and be accessible by this browser') }}</p>
+                                    </div>
+                                </div>
+                                <div class="column">
+                                    <div class="field">
+                                        <label class="label">{{ _('Port') }}</label>
+                                        <div class="control">
+                                            <input class="input" type="number" placeholder="Port Number" v-model.number="port">
+                                        </div>
+                                        <p class="help">{{ _('Port number to connect the websocket client') }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <a class="button is-primary" :disabled="connected" @click="connect">{{ _('Connect') }}</a>
+                            <a class="button is-warning" :disabled="!connected" @click="disconnect">{{ _('Disconnect') }}</a>
+                        </details>
+                        <h1 class="title is-1">{{inPublishMode ? _('Publish to') : _('Subscribe to') }}: {{currentTopic}}</h1>
+                        <p v-if="inPublishMode">this is where the &lt;ul&gt; will go to show the received messages</p>
+                        <p v-else>this is where the &lt;form&gt; will go to publish</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script defer src="https://use.fontawesome.com/releases/v5.0.7/js/all.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js"></script>
+<script>
+    var app = new Vue({
+        el: '#app',
+        data: {
+            status: false,
+            message: '',
+            connected: false,
+            inPublishMode: false,
+            mqtt: {},
+            reconnectTimeout: 2000,
+            messageTimeout: 1600,
+            host: "localhost",
+            port: 18844,
+            currentTopic: '#',
+            connectAttempts: 10,
+            q: '',
+            lang: 'en',
+            results: [],
+            topics: {
+                '#': {},
+                'emon': {},
+                'emon/emonpi': {},
+                'emon/emonpi/power1': {}
+            },
+            languages: [
+            {name: 'Cymraeg', short:'cy'},
+            {name: 'English', short:'en'}
+            ],
+            statuses: {
+                'disconnected': {id:0, label:'Disconnected', msg:'Succesfully disconnected'},
+                'ready': {id:1, label:'Ready', msg:'Connect to subscribe or publish via MQTT'},
+                'connecting': {id:2, label:'Connecting', msg:'Connecting...'},
+                'connected': {id:3, label:'Connected', msg:['Connected to %s on port: %s', this.port, this.port]},
+                'reconnecting': {id:4, label:'Error', msg:'Error Found'},
+                'error': {id:-1, label:'Error', msg:'Error Found'}
+            },
+            translations : {
+                cy:  { 
+                    Ready: "Barod",
+                    Connecting: "Yn Cysyllty",
+                    Connected: "Wedi'i gysyllty",
+                    Connect: "Cysyllty",
+                    Error: 'Gwall',
+                    Subscribe: 'Tanysgrifio',
+                    Publish: 'Cyhoeddi',
+                    Disconnect: 'Datgysylltu',
+                    Disconnected: "Wedi'i ddatgysylltu",
+                    Port: 'Porth',
+                    Host: 'Gweinydd',
+                    Search: 'Chwiliwch',
+                    'Connecting...': 'Yn Cysyllty...',
+                    'Publish to': 'Cyhoeddi i',
+                    'Subscribe to': 'Tanysgrifio i',
+                    'Port number to connect the websocket client': 'Rhif y porth i gysylltu y cleient websocket',
+                    'Connected to %s on port: %s': "Wedi'i gysyllty i %s ar borth: %s",
+                    'Please connect to subscribe or publish via MQTT':'Cysylltwch i danysgrifio neu gyhoeddi hefo MQTT',
+                    "The host must accept websocket connections and be accessible by this browser": "Rhaid i'r gwesteiwr dderbyn cysylltiadau websocket a chael mynediad at y porwr hwn"
+                }
+            }
+        },
+        mounted: function(){
+            //this.connect() //mqtt connect will execute at pageload
+            this.results = this.topics //use all topics as initial search result
+            this.setStatus('ready')
+        },
+        watch: {
+            q: function(newValue,oldValue) {
+                this.findTopic(newValue);
+                this.message = 'searching for '+newValue
+            }
+        },
+        methods: {
+            onConnect: function(){
+                this.connected = true
+                this.setStatus('connected')
+            },
+            onError: function(msg){
+                this.setStatus('reconnecting')
+                if (this.connectAttempts-- > -1) {
+                    setTimeout(this.connect, this.reconnectTimeout);
+                }else{
+                    this.setStatus('error');
+                }
+            },
+            onMessageArrived: function(msg){
+                this.message = msg.destinationName+": "+msg.payloadString
+            },
+            disconnect: function(){
+                that = this
+                setTimeout(function(){
+                    that.setStatus('ready')
+                }, this.messageTimeout)
+                this.connected = false
+                this.mqtt.disconnect()
+                this.setStatus('disconnected')
+            },
+            connect: function(){
+                this.mqtt = new Paho.MQTT.Client(this.host, this.port, 'clientjs')
+                let options = {
+                    timeout: 3,
+                    onSuccess: this.onConnect,
+                    onFailure: this.onError
+                }
+                this.mqtt.onMessageArrived = this.onMessageArrived
+                this.mqtt.connect(options)
+                this.setStatus('connecting')
+            },
+            changeTopic: function(topic){
+                if(!this.connected) this.connect()
+                this.currentTopic = topic
+            },
+            findTopic: function(q){
+                if(q.length==0){
+                    this.results = this.topics
+                } else {
+                    this.results = this.topics.find(x => x.key.indexOf(q) > -1)
+                }
+            },
+            setStatus: function(status) {
+                let newStatus = this.statuses[status]
+                if (newStatus) {
+                    this.status = this._(newStatus.label)
+                    if (typeof newStatus.msg != 'string') {
+                        // this.message = Array.prototype.slice.call(this._(newStatus.msg));
+                        this.message = this._.apply(this, newStatus.msg);
+                        // this.message = this._(newStatus.msg[0],'abc','123');
+                    } else {
+                        this.message = this._(newStatus.msg)
+                    }
+                }
+            },
+            _: function(str) {
+                // gettext style string replacement
+                // can supply more than one value to use for string replacement
+                let tmp = this.translations.hasOwnProperty(this.lang) ? this.translations[this.lang][str]||str : str
+                const placeholder = '%s'
+                if(arguments.length > 1 && tmp.includes(placeholder)) {
+                    //swap placeholder for each additional parameter
+                    args = Array.from(arguments)
+                    args.shift()
+                    args.forEach(function(item){ 
+                        tmp = tmp.replace(placeholder, item)
+                    })
+                }
+                return tmp
+            },
+            nextLanguage: function(){
+                let index = this.languages.findIndex(function(elem){
+                    return elem.short == this.lang
+                }, this)
+                index++
+                index = index >= this.languages.length ? 0 : index
+                this.lang = this.languages[index].short
+            }
+        },
+        computed: {
+            currentLanguage: function(){
+                let language = this.languages.find(function(elem,index,array){
+                    return elem.short == this.lang
+                }, this)
+                return language ? language.name : this.languages[0].name
+            }
+        }
+    })
+</script>
+</body>
+</html>
