@@ -171,8 +171,8 @@
             mqtt: {},
             reconnectTimeout: 2000,
             messageTimeout: 1600,
-            host: "localhost",
-            port: 18844,
+            host: 'localhost',
+            port: 8081,
             currentTopic: '#',
             connectAttempts: 10,
             q: '',
@@ -224,12 +224,16 @@
             //this.connect() //mqtt connect will execute at pageload
             this.results = this.topics //use all topics as initial search result
             this.setStatus('ready')
+            if (localStorage.port) this.port = parseInt(localStorage.port)
+            if (localStorage.host) this.host = localStorage.host
         },
         watch: {
             q: function(newValue,oldValue) {
                 this.findTopic(newValue);
                 this.message = 'searching for '+newValue
-            }
+            },
+            port: function (newVal) { localStorage.port = newVal },
+            host: function (newVal) { localStorage.host = newVal }
         },
         methods: {
             onConnect: function(){
