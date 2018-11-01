@@ -13,6 +13,25 @@
         .fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
             opacity: 0;
         }
+        .navbar-menu {
+            transition: all .3s cubic-bezier(1,0,0,1);
+            overflow: hidden;
+            padding: 0;
+            height: 0;
+            display: block;
+        }
+        .navbar-menu.is-active {
+            height: 14em;
+            padding: 0.5rem 0;
+        }
+        @media only screen and (min-width: 1088px) {
+            .navbar-menu {
+                transition: none!important;
+                height: auto!important;
+                display: block;
+                padding: 0!important;
+            }
+        }
     </style>
     <title>PAHO MQTT TEST - websocket</title>
 </head>
@@ -20,52 +39,54 @@
     <div id="app">
         <nav class="navbar" :class="{'is-primary': connected, 'is-warning': !connected}">
             <div class="navbar-brand">
-                <a class="navbar-item title is-4 is-marginless" href="https://emoncms.org">Clientside webSocket MQTT client</a>
-                <div class="navbar-burger burger" data-target="navbarExampleTransparentExample">
+                <a class="navbar-item title is-4 is-marginless" href="/furry-fiesta">Clientside webSocket MQTT client</a>
+                <div class="navbar-burger burger" :aria-expanded="navbarOpen" :class="{'is-active':navbarOpen}" data-target="navbarExampleTransparentExample" @click="navbarOpen = !navbarOpen">
                     <span></span>
                     <span></span>
                     <span></span>
                 </div>
             </div>
-            <div class="navbar-end">
-                <div class="navbar-item">
-                    <div class="field is-grouped">
-                        <p class="control">
-                            <button class="button" @click="disconnect">
-                                <span>{{ _('Disconnect') }}</span>
-                            </button>
-                        </p>
+            <div class="navbar-menu" :class="{'is-active': navbarOpen}">
+                <div class="navbar-start navbar-end">
+                    <div class="navbar-item">
+                        <div class="field is-grouped">
+                            <p class="control">
+                                <button class="button" @click="disconnect">
+                                    <span>{{ _('Disconnect') }}</span>
+                                </button>
+                            </p>
+                        </div>
                     </div>
-                </div>
-                <div class="navbar-item">
-                    <div class="field is-grouped">
-                        <p class="control">
-                            <button class="button" @click="connect">
-                                <span>{{ _('Connect') }}</span>
-                            </button>
-                        </p>
+                    <div class="navbar-item">
+                        <div class="field is-grouped">
+                            <p class="control">
+                                <button class="button" @click="connect">
+                                    <span>{{ _('Connect') }}</span>
+                                </button>
+                            </p>
+                        </div>
                     </div>
-                </div>
-                <div class="navbar-item">
-                    <div class="field is-grouped">
-                        <p class="control">
-                            <a class="button" href="https://github.com/emoncms">
-                                <span class="icon">
-                                    <i class="fab fa-github"></i>
-                                </span>
-                                <span>GitHub</span>
-                            </a>
-                        </p>
+                    <div class="navbar-item">
+                        <div class="field is-grouped">
+                            <p class="control">
+                                <a class="button" href="https://github.com/emoncms">
+                                    <span class="icon">
+                                        <i class="fab fa-github"></i>
+                                    </span>
+                                    <span>GitHub</span>
+                                </a>
+                            </p>
+                        </div>
                     </div>
-                </div>
-                <div class="navbar-item">
-                    <div class="field is-grouped">
-                        <p class="control">
-                            <button class="button" @click="nextLanguage">
-                                <span class="icon"><i class="fas fa-language"></i></span>
-                                <span>{{ currentLanguage }}</span>
-                            </button>
-                        </p>
+                    <div class="navbar-item">
+                        <div class="field is-grouped">
+                            <p class="control">
+                                <button class="button" @click="nextLanguage">
+                                    <span class="icon"><i class="fas fa-language"></i></span>
+                                    <span>{{ currentLanguage }}</span>
+                                </button>
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -128,7 +149,7 @@
                                     <div class="field">
                                         <label class="label">{{ _('Host') }}</label>
                                         <div class="control">
-                                            <input class="input" type="text" placeholder="Hostname or IP" v-model="host">
+                                            <input class="input" type="text" placeholder="Hostname or IP Address" v-model="host">
                                         </div>
                                         <p class="help">{{ _('The host must accept websocket connections and be accessible by this browser') }}</p>
                                     </div>
@@ -140,6 +161,38 @@
                                             <input class="input" type="number" placeholder="Port Number" v-model.number="port">
                                         </div>
                                         <p class="help">{{ _('Port number to connect the websocket client') }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="columns">
+                                <div class="column">
+                                    <div class="field">
+                                        <label class="label">{{ _('Username') }}</label>
+                                        <div class="control">
+                                            <input class="input" type="text" placeholder="MQTT Username" v-model="userName">
+                                        </div>
+                                        <p class="help">{{ _('Your mqtt broker authentication and authorization username') }}</p>
+                                    </div>
+                                </div>
+                                <div class="column">
+                                    <div class="field">
+                                        <label class="label">{{ _('Password') }}</label>
+                                        <div class="control">
+                                            <input class="input" type="text" placeholder="MQTT Password" v-model="password">
+                                        </div>
+                                        <p class="help">{{ _('Your mqtt broker authentication and authorization password') }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="columns">
+                                <div class="column">
+                                    <div class="field">
+                                        <div class="control">
+                                            <label class="checkbox">
+                                                <input type="checkbox" v-model="useSSL">
+                                                use secure web sockets (WSS://)
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -157,13 +210,14 @@
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-<script defer src="https://use.fontawesome.com/releases/v5.0.7/js/all.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js"></script>
+<script src="vue.js"></script>
+<script defer src="fa-all.js"></script>
+<script src="mqttws31.js"></script>
 <script>
     var app = new Vue({
         el: '#app',
         data: {
+            navbarOpen: false,
             status: false,
             message: '',
             connected: false,
@@ -173,8 +227,11 @@
             messageTimeout: 1600,
             host: 'localhost',
             port: 8081,
+            userName: 'dave',
+            password: 'dave',
             currentTopic: '#',
             connectAttempts: 10,
+            useSSL: false,
             q: '',
             lang: 'en',
             results: [],
@@ -188,14 +245,6 @@
             {name: 'Cymraeg', short:'cy'},
             {name: 'English', short:'en'}
             ],
-            statuses: {
-                'disconnected': {id:0, label:'Disconnected', msg:'Succesfully disconnected'},
-                'ready': {id:1, label:'Ready', msg:'Connect to subscribe or publish via MQTT'},
-                'connecting': {id:2, label:'Connecting', msg:'Connecting...'},
-                'connected': {id:3, label:'Connected', msg:['Connected to %s on port: %s', this.port, this.port]},
-                'reconnecting': {id:4, label:'Error', msg:'Error Found'},
-                'error': {id:-1, label:'Error', msg:'Error Found'}
-            },
             translations : {
                 cy:  { 
                     Ready: "Barod",
@@ -220,7 +269,7 @@
                 }
             }
         },
-        mounted: function(){
+        mounted: function () {
             //this.connect() //mqtt connect will execute at pageload
             this.results = this.topics //use all topics as initial search result
             this.setStatus('ready')
@@ -236,7 +285,7 @@
             host: function (newVal) { localStorage.host = newVal }
         },
         methods: {
-            onConnect: function(){
+            onConnect: function () {
                 this.connected = true
                 this.setStatus('connected')
             },
@@ -251,21 +300,24 @@
             onMessageArrived: function(msg){
                 this.message = msg.destinationName+": "+msg.payloadString
             },
-            disconnect: function(){
+            disconnect: function () {
                 that = this
-                setTimeout(function(){
+                setTimeout(function () {
                     that.setStatus('ready')
                 }, this.messageTimeout)
                 this.connected = false
                 this.mqtt.disconnect()
                 this.setStatus('disconnected')
             },
-            connect: function(){
-                this.mqtt = new Paho.MQTT.Client(this.host, this.port, 'clientjs')
+            connect: function () {
+                this.mqtt = new Paho.MQTT.Client(this.host, this.port, '/', 'clientjs')
                 let options = {
                     timeout: 3,
                     onSuccess: this.onConnect,
-                    onFailure: this.onError
+                    onFailure: this.onError,
+                    userName: this.userName,
+                    password: this.password,
+                    useSSL: this.useSSL
                 }
                 this.mqtt.onMessageArrived = this.onMessageArrived
                 this.mqtt.connect(options)
@@ -310,7 +362,7 @@
                 }
                 return tmp
             },
-            nextLanguage: function(){
+            nextLanguage: function () {
                 let index = this.languages.findIndex(function(elem){
                     return elem.short == this.lang
                 }, this)
@@ -320,11 +372,21 @@
             }
         },
         computed: {
-            currentLanguage: function(){
+            currentLanguage: function () {
                 let language = this.languages.find(function(elem,index,array){
                     return elem.short == this.lang
                 }, this)
                 return language ? language.name : this.languages[0].name
+            },
+            statuses: function () {
+                return {
+                    'disconnected': {id:0, label:'Disconnected', msg:'Succesfully disconnected'},
+                    'ready': {id:1, label:'Ready', msg:'Connect to subscribe or publish via MQTT'},
+                    'connecting': {id:2, label:'Connecting', msg:'Connecting...'},
+                    'connected': {id:3, label:'Connected', msg:['Connected to %s on port: %s. tls = %s', this.host, this.port, this.useSSL]},
+                    'reconnecting': {id:4, label:'Error', msg:'Error Found'},
+                    'error': {id:-1, label:'Error', msg:'Error Found'}
+                }
             }
         }
     })
